@@ -1,6 +1,7 @@
 # Senville/Midea Mini-Split Reverse Engineering & Control
 
 Complete toolkit for local control of Senville/Midea mini-split air conditioners with web interface, scheduling, and reverse engineering tools.
+I have a Senville mini-split HVAC unit (a rebadged Midea) with a WiFi controller. I have been using the supplied Android/cloud based utility to control it. I have wanted to reverse engineer the protocol to eliminate the reliance on a third party. I have been exploringing AI and have found Claude to be the most effective cli AI for me so I asked it to help me reverse engineer the Senville. It quickly reveled that the Senville was a rebadged Midea and that there was a considerable amount if information online. Claude quickly took over the job of reverse engineering and developing a number of tools. This repo is the result. This repo does contains utilities to monitor and control a Senville but is not what I would call polished product.
 
 ## Features
 
