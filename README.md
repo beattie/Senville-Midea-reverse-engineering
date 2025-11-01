@@ -1,342 +1,456 @@
 # Senville/Midea Mini-Split Reverse Engineering & Control
 
-Complete toolkit for controlling and reverse engineering Senville/Midea mini-split air conditioners.
+Complete toolkit for local control of Senville/Midea mini-split air conditioners with web interface, scheduling, and reverse engineering tools.
 
-## Contents
+## Features
 
-This repository contains:
-
-1. **Control Scripts** - Python scripts to discover and control your AC
-2. **WiFi Capture Tools** - Scripts to capture and analyze WiFi protocol traffic
-3. **Documentation** - Comprehensive protocol documentation
+✅ **Local Control** - No cloud required, direct communication with your AC
+✅ **Web Dashboard** - Modern web interface with REST API (http://localhost:5000)
+✅ **Scheduling** - Automated temperature/mode changes with background daemon
+✅ **Command-Line Tools** - Python scripts for all AC functions
+✅ **Protocol Analysis** - WiFi capture and reverse engineering tools
+✅ **Multiple Units** - Compatible with many Midea-based brands
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Clone and Setup
 
-The virtual environment is already set up with all required packages:
-- `midea-beautiful-air` - Control library
-- `msmart` - Discovery tool
-- `scapy` - Packet analysis
-- `python-dotenv` - Environment configuration
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/senville-control.git
+cd senville-control
+
+# Create Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install midea-beautiful-air msmart-ng python-dotenv flask
+```
 
 ### 2. Discover Your Device
 
 ```bash
-# Activate virtual environment
 source venv/bin/activate
 
-# Discover devices on your network
+# Option 1: Local discovery (no account needed)
+python3 discover.py YOUR_AC_IP_ADDRESS
+
+# Option 2: Cloud discovery (requires Midea/SmartLife account)
 python3 discover.py --account YOUR_EMAIL --password YOUR_PASSWORD
 ```
 
-This will output your device credentials:
-- IP Address
-- Device ID
-- Token (128 characters)
-- Key (64 characters)
+This outputs your device credentials:
+- `SENVILLE_IP` - Device IP address
+- `SENVILLE_DEVICE_ID` - Device ID
+- `SENVILLE_TOKEN` - 128-character authentication token
+- `SENVILLE_KEY` - 64-character encryption key
 
 ### 3. Configure Environment
 
 ```bash
-# Copy example config
+# Copy the example configuration
 cp .env.example .env
 
-# Edit .env and add your credentials from step 2
+# Edit .env with your device credentials from step 2
 nano .env
 ```
 
-### 4. Control Your AC
-
-#### Check Status
+Required variables in `.env`:
 ```bash
+SENVILLE_IP=192.168.1.XXX
+SENVILLE_TOKEN=your_128_char_token_here
+SENVILLE_KEY=your_64_char_key_here
+```
+
+Optional variables:
+```bash
+SENVILLE_DEVICE_ID=your_device_id
+SENVILLE_MAC=XX:XX:XX:XX:XX:XX
+NETWORK_INTERFACE=eth0        # For packet capture
+PHONE_IP=192.168.1.50         # For packet capture
+```
+
+### 4. Generate Personalized Docs (Optional)
+
+```bash
+# Generate local documentation with your real IP addresses
+./generate_local.sh
+
+# Read your personalized docs (gitignored, safe)
+cat PROJECT_NOTES.local.md
+cat QUICK_REFERENCE.local.md
+```
+
+This creates `*.local.md` files with your actual device info for easy reference.
+
+### 5. Test Connection
+
+```bash
+source venv/bin/activate
+
+# Quick connectivity test
+./troubleshoot.sh
+
+# Check AC status
 python3 status.py
 ```
 
-#### Control Commands
+### 6. Control Your AC
+
+**Command Line:**
 ```bash
-# Turn on in cool mode at 22°C
-python3 control.py --power on --mode cool --temp 22
+# Turn on heat mode at 72°F
+python3 control_simple.py --power on --mode heat --temp-f 72
 
 # Turn off
-python3 control.py --power off
+python3 control_simple.py --power off
 
-# Change temperature
-python3 control.py --temp 24
-
-# Set to heat mode
-python3 control.py --mode heat --temp 25
+# Full control with fan and swing
+python3 control_full.py --power on --mode cool --temp-f 68 --fan-speed 60 --vswing on
 ```
 
----
-
-## WiFi Packet Capture & Analysis
-
-For deeper protocol reverse engineering, you can capture and analyze WiFi traffic.
-
-### Prerequisites
-
-Ensure you have:
-- Wireless adapter with monitor mode support
-- aircrack-ng suite installed
-- Root/sudo access
-
-### Step 1: Enable Monitor Mode
-
+**Web Interface:**
 ```bash
-sudo ./wifi_setup.sh
+# Start the web server
+./start_web.sh
+
+# Open in browser
+http://localhost:5000              # Control dashboard
+http://localhost:5000/schedules.html   # Scheduling interface
 ```
 
-This will:
-- Kill interfering processes
-- Set adapter to monitor mode
-- Create `wlp3s0mon` interface
-
-### Step 2: Scan for Your Device
-
+**REST API:**
 ```bash
-sudo airodump-ng wlp3s0mon
+# Get status
+curl http://localhost:5000/api/status
+
+# Turn on
+curl -X POST http://localhost:5000/api/power/on
+
+# Set temperature
+curl -X POST http://localhost:5000/api/temperature/72
 ```
-
-Note your Senville device's:
-- **BSSID** (MAC address)
-- **Channel number**
-
-Press Ctrl+C to stop scanning.
-
-### Step 3: Capture Traffic
-
-```bash
-# Replace CHANNEL and BSSID with your device's values
-sudo ./capture_traffic.sh -c CHANNEL -b AA:BB:CC:DD:EE:FF
-```
-
-While capturing:
-1. Open the Senville mobile app
-2. Turn AC on/off
-3. Change temperature
-4. Change modes
-5. Adjust fan speed
-
-Press Ctrl+C when done.
-
-### Step 4: Analyze Captured Packets
-
-```bash
-# Basic analysis
-python3 analyze_capture.py senville_capture-01.cap
-
-# Verbose analysis
-python3 analyze_capture.py senville_capture-01.cap --verbose
-```
-
-This will show:
-- Packet statistics
-- TCP/UDP connections
-- Payloads on ports 6444 and 6445
-- Protocol patterns
-
-### Step 5: Restore Normal WiFi
-
-```bash
-sudo ./wifi_restore.sh
-```
-
----
-
-## Script Reference
-
-### Control Scripts
-
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `discover.py` | Find devices and get credentials | `python3 discover.py -a EMAIL -p PASS` |
-| `status.py` | Check AC status | `python3 status.py` |
-| `control.py` | Control AC settings | `python3 control.py --power on --temp 22` |
-
-### WiFi Capture Scripts
-
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `wifi_setup.sh` | Enable monitor mode | `sudo ./wifi_setup.sh` |
-| `wifi_restore.sh` | Restore managed mode | `sudo ./wifi_restore.sh` |
-| `capture_traffic.sh` | Capture packets | `sudo ./capture_traffic.sh -c CH -b MAC` |
-| `analyze_capture.py` | Analyze captures | `python3 analyze_capture.py file.cap` |
 
 ---
 
 ## Documentation
 
-### Protocol Documentation
-See `senville-protocol-documentation.md` for:
-- Network protocol details (TCP/UDP, ports)
-- UART protocol specifications
-- Packet structure and format
-- Authentication & encryption
-- Command codes and formats
-- Known limitations
+📖 **User Guides:**
+- `README_SETUP.md` - Detailed setup instructions
+- `QUICK_REFERENCE.md` - Quick command reference (template)
+- `QUICK_REFERENCE.local.md` - Your personalized reference (generated)
 
-### Control Guide
-See `senville-control-guide.md` for:
-- Step-by-step setup instructions
-- Command-line examples
-- Python API usage
-- Troubleshooting tips
+🌐 **Web Interface:**
+- `WEB_INTERFACE.md` - Web dashboard and REST API documentation
+- `AUTOMATION.md` - Scheduling and automation guide
 
----
-
-## Protocol Overview
-
-### Network Ports
-- **6444** - TCP (encrypted commands)
-- **6445** - UDP (device discovery)
-
-### UART Interface
-- **Baud Rate:** 9600 8N1
-- **Start Byte:** 0xAA
-- **Commands:** 0x41 (control), 0xB5 (capabilities)
-
-### Authentication (V3)
-- **Token:** 128-character hex string
-- **Key:** 64-character hex string
-- Retrieved via cloud API
-
-### Supported Commands
-- Power on/off
-- Temperature (16-31°C / 60-87°F)
-- Modes: Cool, Heat, Fan, Dry, Auto
-- Fan speed control
-- Eco/sleep modes
+🔧 **Technical:**
+- `senville-protocol-documentation.md` - Protocol specifications
+- `senville-control-guide.md` - Detailed usage guide
+- `RELIABILITY_IMPROVEMENTS.md` - Performance optimizations
+- `PROJECT_NOTES.md` - Development notes (template)
 
 ---
 
-## Architecture
+## Scheduling & Automation
 
+Create automated temperature schedules:
+
+**Via Web Interface:**
 ```
-┌─────────────┐         ┌──────────┐         ┌─────────┐
-│ Mobile App  │ <-----> │ WiFi Net │ <-----> │ SK103   │
-│  (Control)  │  TCP    │  Router  │  WiFi   │ Dongle  │
-└─────────────┘  6444   └──────────┘         └────┬────┘
-                                                    │
-┌─────────────┐                                    │ UART
-│ Python      │                                    │ 9600
-│ Scripts     │                                    │
-│ (This Repo) │                              ┌─────┴─────┐
-└─────────────┘                              │ AC Unit   │
-                                             │ (Indoor)  │
-                                             └───────────┘
+http://localhost:5000/schedules.html
 ```
 
+**Via Command Line:**
+```bash
+# Morning warmup at 7 AM
+python3 manage_schedules.py add "Morning Heat" "07:00" --power on --mode heat --temp-f 68
+
+# Turn off at night
+python3 manage_schedules.py add "Night Off" "23:00" --power off
+
+# Start the scheduler daemon
+python3 scheduler.py --daemon
+```
+
+See `AUTOMATION.md` for complete documentation.
+
 ---
 
-## Environment Variables
+## Installation as System Services
 
-Required in `.env` file:
+Run the web server and scheduler automatically on boot:
 
 ```bash
-# Device network settings
-SENVILLE_IP=192.168.1.100
-SENVILLE_DEVICE_ID=123456789012345
+# Install systemd services
+sudo ./install_services.sh
 
-# V3 authentication
-SENVILLE_TOKEN=<128-char-token>
-SENVILLE_KEY=<64-char-key>
+# Start services
+sudo systemctl start senville-api
+sudo systemctl start senville-scheduler
 
-# Cloud credentials (for discovery)
-MIDEA_ACCOUNT=your@email.com
-MIDEA_PASSWORD=your_password
+# Enable auto-start on boot
+sudo systemctl enable senville-api
+sudo systemctl enable senville-scheduler
 ```
+
+---
+
+## Template-Based Documentation
+
+This repository uses environment variables to keep sensitive data out of git:
+
+**Template files (in git):**
+- Use `${VARIABLE_NAME}` placeholders
+- Safe to commit publicly
+- Example: `PROJECT_NOTES.md`
+
+**Generated files (local only):**
+- Created by `./generate_local.sh`
+- Contain your real IP addresses
+- Automatically gitignored
+- Example: `PROJECT_NOTES.local.md`
+
+When you clone this repo, run `./generate_local.sh` to create your personalized documentation.
+
+---
+
+## Reverse Engineering Tools
+
+For deeper protocol analysis and packet capture:
+
+### WiFi Packet Capture
+
+**Prerequisites:**
+- Wireless adapter with monitor mode support
+- aircrack-ng suite: `sudo apt install aircrack-ng`
+- tcpdump: `sudo apt install tcpdump`
+
+**Capture traffic:**
+```bash
+# Edit .env with your NETWORK_INTERFACE
+nano .env
+
+# Capture all AC traffic
+./capture_all_ac_traffic.sh
+
+# Capture phone-to-AC traffic
+./capture_phone_to_ac.sh
+```
+
+**Analyze captures:**
+```bash
+source venv/bin/activate
+python3 analyze_capture.py capture_file.pcap
+```
+
+See `senville-protocol-documentation.md` for protocol details.
+
+---
+
+## Project Structure
+
+```
+senville-control/
+├── .env                    # Your configuration (gitignored)
+├── .env.example            # Configuration template
+├── README.md               # This file
+├── README_SETUP.md         # Detailed setup guide
+│
+├── Python Scripts
+│   ├── discover.py         # Device discovery
+│   ├── status.py           # Check AC status
+│   ├── control_simple.py   # Basic control
+│   ├── control_full.py     # Full control (fan/swing)
+│   ├── api_server.py       # Web server & REST API
+│   ├── scheduler.py        # Scheduling daemon
+│   └── manage_schedules.py # Schedule management CLI
+│
+├── Shell Scripts
+│   ├── generate_local.sh   # Generate personalized docs
+│   ├── start_web.sh        # Start web interface
+│   ├── troubleshoot.sh     # Connection diagnostics
+│   └── capture_*.sh        # Packet capture scripts
+│
+├── Web Interface
+│   └── web/
+│       ├── index.html      # Control dashboard
+│       ├── schedules.html  # Scheduling UI
+│       └── *.js, *.css     # Frontend code
+│
+├── Documentation
+│   ├── *.md                # Template docs (${VARIABLES})
+│   └── *.local.md          # Your personalized docs (generated)
+│
+└── System Services
+    ├── senville-api.service       # Web server service
+    └── senville-scheduler.service # Scheduler service
+```
+
+---
+
+## Security
+
+### Safe to Commit
+- ✅ Template files with `${VARIABLE}` syntax
+- ✅ `.env.example`
+- ✅ Scripts that read from `.env`
+- ✅ Documentation templates
+
+### Never Commit (Protected by .gitignore)
+- ❌ `.env` - Contains credentials
+- ❌ `*.local.md` - Contains your IP addresses
+- ❌ `*.pcap` - Packet captures
+- ❌ `*.pid` - Runtime files
+- ❌ `schedules.json` - Your schedules
+
+### Best Practices
+- Use DHCP reservation for your AC's IP address
+- Keep your `.env` file secure
+- Don't share your token/key publicly
+- Tokens may expire - rediscover if connection fails
 
 ---
 
 ## Troubleshooting
 
-### Discovery Issues
-- Ensure device is powered and connected to WiFi
-- Be on the same network as the device
-- Verify Midea account credentials
-- Try cloud mode: `python3 status.py --cloud`
+### Device Not Found
+```bash
+# Test connectivity
+ping YOUR_AC_IP
 
-### Connection Issues
-- Check IP address hasn't changed (use DHCP reservation)
-- Verify token/key are correct
-- Check firewall isn't blocking port 6444
-- Try discovery again to refresh credentials
+# Run diagnostics
+./troubleshoot.sh
 
-### Monitor Mode Issues
-- Ensure wireless adapter supports monitor mode
-- Check that aircrack-ng is installed
-- Run `sudo airmon-ng check kill` manually
-- Verify no other processes are using the adapter
+# Try cloud discovery
+python3 discover.py --account EMAIL --password PASS
+```
 
-### Capture Shows No Traffic
-- Verify correct channel and BSSID
-- Ensure device is actively communicating
-- Use app to generate traffic
-- Check monitor interface is up: `iw dev`
+### Connection Errors
+```bash
+# Verify .env configuration
+cat .env
 
----
+# Rediscover device (tokens may expire)
+python3 discover.py YOUR_AC_IP
 
-## Security & Legal
+# Update .env with new token/key
+```
 
-### Authorized Use Only
-- Only reverse engineer devices you own
-- Do not access networks you don't control
-- Respect local laws regarding reverse engineering
-- Use for educational/research purposes
+### Web Interface Issues
+```bash
+# Check if port 5000 is available
+sudo lsof -i :5000
 
-### Credential Security
-- Never commit `.env` to version control
-- Store tokens/keys securely
-- Use strong Midea account passwords
-- Limit access to control scripts
+# View logs
+tail -f /tmp/senville-api.log  # If running as service
 
----
+# Restart web server
+./restart_web.sh
+```
 
-## Resources
-
-### GitHub Projects
-- [mac-zhou/midea-ac-py](https://github.com/mac-zhou/midea-ac-py) - Home Assistant integration
-- [nbogojevic/midea-beautiful-air](https://github.com/nbogojevic/midea-beautiful-air) - Python client
-- [dudanov/MideaUART](https://github.com/dudanov/MideaUART) - Arduino UART library
-- [reneklootwijk/node-mideahvac](https://github.com/reneklootwijk/node-mideahvac) - Node.js implementation
-
-### Documentation
-- `senville-protocol-documentation.md` - Protocol specifications
-- `senville-control-guide.md` - Usage guide
-
----
-
-## Contributing
-
-Findings and improvements welcome! If you discover:
-- New protocol features
-- Additional command codes
-- Better decryption methods
-- Model-specific variations
-
-Please document and share your findings!
-
----
-
-## License
-
-Educational and research use. Respect manufacturer's terms of service.
+See `README_SETUP.md` for detailed troubleshooting.
 
 ---
 
 ## Compatibility
 
-**Tested Brands:** Senville, Midea
+**Tested Devices:**
+- Senville SENL Series with OSK105 WiFi adapter
+- Midea mini-splits with V3 protocol
 
-**Should Work With:** Klimaire, AirCon, Century, Pridiom, Thermocore, Comfee, Toshiba, Carrier, Goodman, Friedrich, Samsung, Kenmore, Trane, Lennox, LG, Electrolux, Qlima, Artel, Inventor, Dimstal/Simando, Pioneer
+**Should Work With:**
+Klimaire, AirCon, Century, Pridiom, Thermocore, Comfee, Toshiba, Carrier, Goodman, Friedrich, Samsung (Midea-based), Kenmore, Trane, Lennox, LG (Midea-based), Electrolux, Qlima, Artel, Inventor, Dimstal/Simando, Pioneer
 
 **Requirements:**
 - Python 3.8+
-- WiFi adapter with monitor mode (for packet capture)
-- Linux (Debian/Ubuntu tested)
+- Linux (Debian/Ubuntu tested, should work on macOS)
+- Device on same network
+
+**WiFi Capture (Optional):**
+- Wireless adapter with monitor mode
+- aircrack-ng suite
+
+---
+
+## Protocol Overview
+
+### Network Communication
+- **TCP Port 6444** - Encrypted commands
+- **UDP Port 6445** - Device discovery
+- **Authentication** - V3 protocol with token/key
+
+### UART Interface
+- **Baud Rate:** 9600 8N1
+- **WiFi Module:** OSK103/OSK105
+- **Direct Control:** Bypasses WiFi module
+
+### Supported Features
+- Power on/off
+- Temperature: 16-31°C (60-87°F)
+- Modes: Cool, Heat, Auto, Dry, Fan
+- Fan speeds: 5 levels + auto
+- Swing: Vertical and horizontal
+- Eco/Turbo modes (device-dependent)
+
+See `senville-protocol-documentation.md` for complete protocol details.
+
+---
+
+## Resources
+
+### Related Projects
+- [nbogojevic/midea-beautiful-air](https://github.com/nbogojevic/midea-beautiful-air) - Python control library (used by this project)
+- [mac-zhou/midea-ac-py](https://github.com/mac-zhou/midea-ac-py) - Home Assistant integration
+- [dudanov/MideaUART](https://github.com/dudanov/MideaUART) - Arduino UART library
+- [reneklootwijk/node-mideahvac](https://github.com/reneklootwijk/node-mideahvac) - Node.js implementation
+
+### Documentation
+- Official Midea protocol is not publicly documented
+- This project uses reverse engineering and open-source libraries
+- Community contributions welcome!
+
+---
+
+## Contributing
+
+Contributions welcome! Areas of interest:
+- Additional protocol features (eco mode, turbo, sleep timers)
+- Support for other Midea device types (dehumidifiers, etc.)
+- Home Assistant integration improvements
+- Mobile app development
+- Additional brand testing
+
+Please open issues or pull requests on GitHub.
+
+---
+
+## License
+
+Educational and research use. This project is for controlling devices you own. Respect manufacturer's terms of service and local laws regarding reverse engineering.
+
+---
+
+## Credits
+
+- Reverse engineering based on open-source Midea protocol projects
+- Built using `midea-beautiful-air` and `msmart-ng` libraries
+- Protocol documentation from community research
 
 ---
 
 **Created:** 2025-10-30
-**Status:** Fully functional control, packet capture tools ready
+**Last Updated:** 2025-11-01
+**Status:** Fully functional - local control, web interface, scheduling, and reverse engineering tools ready
+
+---
+
+## Quick Links
+
+- **Setup Guide:** `README_SETUP.md`
+- **Quick Reference:** Run `./generate_local.sh` then see `QUICK_REFERENCE.local.md`
+- **Web Interface:** `http://localhost:5000` (after running `./start_web.sh`)
+- **Scheduling:** `AUTOMATION.md`
+- **API Documentation:** `WEB_INTERFACE.md`
+- **Protocol Details:** `senville-protocol-documentation.md`
