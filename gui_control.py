@@ -41,6 +41,7 @@ class SenvilleGUI:
         self.refresh_interval = 5  # seconds
         self.refresh_thread = None
         self.running = True
+        self.temp_slider_active = False  # Track if user is adjusting slider
 
         # Create GUI
         self.create_widgets()
@@ -206,6 +207,10 @@ class SenvilleGUI:
         )
         self.temp_scale.pack(side=tk.LEFT)
 
+        # Bind to ButtonPress and ButtonRelease to track slider interaction
+        self.temp_scale.bind("<ButtonPress-1>", self.on_temp_press)
+        self.temp_scale.bind("<ButtonRelease-1>", self.on_temp_release)
+
         self.temp_label = ttk.Label(temp_frame, text="72°F", font=('Helvetica', 10, 'bold'))
         self.temp_label.pack(side=tk.LEFT, padx=(10, 0))
 
@@ -305,10 +310,19 @@ class SenvilleGUI:
         self.on_temp_change(None)
 
     def on_temp_change(self, value):
-        """Handle temperature slider change"""
+        """Handle temperature slider change (just update label)"""
         temp = self.temp_var.get()
         unit = self.temp_unit.get()
         self.temp_label.config(text=f"{temp}°{unit}")
+
+    def on_temp_press(self, event):
+        """Handle temperature slider press (start dragging)"""
+        self.temp_slider_active = True
+
+    def on_temp_release(self, event):
+        """Handle temperature slider release (actually set temperature)"""
+        self.temp_slider_active = False
+        self.set_temperature()
 
     def get_device(self):
         """Get or create device connection"""
@@ -376,9 +390,10 @@ class SenvilleGUI:
             self.status_labels['target_temp'].config(text=f"{target_temp}{unit}")
             self.status_labels['indoor_temp'].config(text=f"{indoor_temp}{unit}")
 
-            # Update temperature control to match current state
-            self.temp_var.set(target_temp)
-            self.temp_label.config(text=f"{target_temp}°{self.temp_unit.get()}")
+            # Update temperature control to match current state (only if not being adjusted)
+            if not self.temp_slider_active:
+                self.temp_var.set(target_temp)
+                self.temp_label.config(text=f"{target_temp}°{self.temp_unit.get()}")
 
             # Fan speed
             fan_map = {20: 'Low', 40: 'Med-Low', 60: 'Medium', 80: 'Med-High', 102: 'Auto'}
