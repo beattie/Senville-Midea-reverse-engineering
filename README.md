@@ -122,6 +122,9 @@ python3 control_full.py --power on --mode cool --temp-f 68 --fan-speed 60 --vswi
 ```
 
 **Web Interface:**
+
+![Senville AC Control Web Interface](images/Senville_AC_Control.png)
+
 ```bash
 # Start the web server
 ./start_web.sh
